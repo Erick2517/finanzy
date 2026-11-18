@@ -84,7 +84,11 @@ class ControlAccesoRolesTest extends TestCase
 
     public function test_el_menu_no_muestra_enlaces_administrativos_a_invitados(): void
     {
-        $this->get('/demo')
+        // Los invitados ya no acceden a ninguna página con menú (/demo exige sesión):
+        // se comprueba la pantalla de acceso, que es lo único que pueden ver.
+        $this->get('/demo')->assertRedirect('/login');
+
+        $this->get('/login')
             ->assertOk()
             ->assertDontSee('Administración')
             ->assertDontSee('href="'.url('/usuarios').'"', false)

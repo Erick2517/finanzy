@@ -1,4 +1,4 @@
-// Navegación lateral: estados hover, focus-visible, active y página actual.
+// Navegación lateral: estados hover, focus-visible, active, página actual y desactivado.
 
 .sidebar-link {
     position: relative;
@@ -35,8 +35,8 @@
         transition: transform .2s ease-in-out, color .2s ease-in-out;
     }
 
-    // Hover (solo en opciones no activas)
-    &:not(.is-active):hover {
+    // Hover (solo en opciones disponibles y no activas)
+    &:not(.is-active):not(.is-disabled):hover {
         background-color: rgba($primary, .08);
         color: $primary;
 
@@ -63,8 +63,14 @@
     }
 
     // Pulsación
-    &:active {
+    &:not(.is-disabled):active {
         transform: scale(.97);
+    }
+
+    // Módulo sin ruta todavía ("Próximamente"): visible pero no navegable
+    &.is-disabled {
+        color: $text-muted;
+        cursor: not-allowed;
     }
 
     // Página actual

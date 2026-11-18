@@ -5,11 +5,15 @@ use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\ResetPasswordController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ReporteController;
 use App\Http\Controllers\UserController;
 use App\Http\Requests\StoreDemoRequest;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Route;
 
-Route::redirect('/', '/demo');
+// Sin sesión, el middleware auth del panel lleva al inicio de sesión.
+Route::get('/', fn (): RedirectResponse => to_route('dashboard'));
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
@@ -27,9 +31,12 @@ Route::middleware('guest')->group(function () {
 
 Route::post('/logout', [LoginController::class, 'logout'])->middleware('auth')->name('logout');
 
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware('auth')->name('dashboard');
+Route::get('/dashboard', DashboardController::class)->middleware('auth')->name('dashboard');
+
+Route::middleware('auth')->prefix('reportes')->name('reportes.')->group(function () {
+    Route::get('/', [ReporteController::class, 'index'])->name('index');
+    Route::get('/pdf', [ReporteController::class, 'pdf'])->name('pdf');
+});
 
 Route::middleware(['auth', 'role:Administrador'])->group(function () {
     Route::resource('usuarios', UserController::class)->except(['show', 'destroy']);
@@ -40,10 +47,13 @@ Route::middleware(['auth', 'role:Administrador'])->group(function () {
 
 Route::redirect('/home', '/dashboard')->name('home');
 
-Route::get('/demo', function () {
-    return view('demo');
-})->name('demo');
+// Catálogo de componentes con datos ficticios: solo para usuarios autenticados.
+Route::middleware('auth')->group(function () {
+    Route::get('/demo', function () {
+        return view('demo');
+    })->name('demo');
 
-Route::post('/demo', function (StoreDemoRequest $request) {
-    return redirect('/demo')->with('success', 'Registro de prueba validado correctamente (no se guardó en base de datos).');
-})->name('demo.store');
+    Route::post('/demo', function (StoreDemoRequest $request) {
+        return redirect('/demo')->with('success', 'Registro de prueba validado correctamente (no se guardó en base de datos).');
+    })->name('demo.store');
+});
