@@ -1,0 +1,29 @@
+// Estructura del layout autenticado.
+
+// Contenedor del menú lateral: columna fija en escritorio y offcanvas en móvil.
+// En escritorio Bootstrap deja .offcanvas-lg con fondo transparente, por eso el
+// fondo y el borde van en este contenedor.
+.app-sidebar {
+    .offcanvas-lg {
+        --bs-offcanvas-width: 280px;
+    }
+
+    @include media-breakpoint-up(lg) {
+        width: 250px;
+        flex-shrink: 0;
+        background-color: $white;
+        border-right: $border-width solid $border-color;
+
+        // El menú acompaña el desplazamiento de páginas largas.
+        .offcanvas-lg {
+            position: sticky;
+            top: 0;
+        }
+    }
+}
+
+// Permite que el contenido principal se encoja dentro del flex y que las
+// tablas responsivas hagan scroll propio en lugar de desbordar la página.
+.min-w-0 {
+    min-width: 0;
+}

@@ -17,7 +17,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>{{ $title ? $title . ' | ' : '' }}{{ config('app.name', 'Finanzy') }}</title>
+    <title>{{ $title ? $title . ' | ' : '' }}Finanzy</title>
 
     @vite(['resources/sass/app.scss', 'resources/js/app.js'])
     @stack('styles')
@@ -30,7 +30,7 @@
         <div class="d-flex flex-grow-1">
             <x-layout.sidebar :active-route="$activeRoute ?? request()->path()" />
 
-            <main class="flex-grow-1 p-4 min-w-0">
+            <main class="flex-grow-1 p-3 p-lg-4 min-w-0">
                 @foreach ($alertas as $clave => $tipo)
                     @if (session()->has($clave))
                         <x-ui.alert :type="$tipo" :message="session($clave)" />

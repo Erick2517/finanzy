@@ -128,12 +128,5 @@
         </x-ui.modal>
     @endforeach
 
-    @if ($usuarios->total() > 0)
-        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2 mt-3">
-            <span class="small text-muted">
-                Mostrando {{ $usuarios->firstItem() }} a {{ $usuarios->lastItem() }} de {{ $usuarios->total() }} usuarios
-            </span>
-            {{ $usuarios->links('pagination::bootstrap-5') }}
-        </div>
-    @endif
+    <x-ui.pagination :paginator="$usuarios" label="usuarios" />
 </x-layout.app>
