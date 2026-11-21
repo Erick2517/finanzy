@@ -6,6 +6,8 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\CategoriaController;
+use App\Http\Controllers\ReporteController;
 use App\Http\Requests\StoreDemoRequest;
 use Illuminate\Support\Facades\Route;
 
@@ -47,3 +49,15 @@ Route::get('/demo', function () {
 Route::post('/demo', function (StoreDemoRequest $request) {
     return redirect('/demo')->with('success', 'Registro de prueba validado correctamente (no se guardó en base de datos).');
 })->name('demo.store');
+
+// Módulos financieros: cada usuario accede exclusivamente a sus datos.
+Route::middleware('auth')->group(function () {
+    Route::get('/categorias', [CategoriaController::class, 'index'])->name('categorias.index');
+    Route::post('/categorias', [CategoriaController::class, 'store'])->name('categorias.store');
+    Route::put('/categorias/{categoria}', [CategoriaController::class, 'update'])->name('categorias.update');
+    Route::delete('/categorias/{categoria}', [CategoriaController::class, 'destroy'])->name('categorias.destroy');
+    Route::get('/reportes', [ReporteController::class, 'index'])->name('reportes.index');
+    Route::post('/reportes/movimientos', [ReporteController::class, 'store'])->name('reportes.movimientos.store');
+    Route::get('/reportes/pdf', [ReporteController::class, 'pdf'])->name('reportes.pdf');
+    Route::get('/reportes/csv', [ReporteController::class, 'csv'])->name('reportes.csv');
+});
