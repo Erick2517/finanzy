@@ -199,6 +199,17 @@ class FilterBarTest extends TestCase
         $sinCarga->assertDontSee('data-loading-text', false);
     }
 
+    public function test_activa_las_validaciones_del_cliente_para_el_rango_de_fechas(): void
+    {
+        $this->peticion();
+
+        $vista = $this->barra();
+
+        $vista->assertSee('data-validar novalidate', false);
+        $this->assertMatchesRegularExpression('/name="fecha_inicio" value=""\s+data-requerido-con="fecha_fin"/', (string) $vista);
+        $this->assertMatchesRegularExpression('/name="fecha_fin" value=""\s+data-requerido-con="fecha_inicio" data-fecha-desde="fecha_inicio"/', (string) $vista);
+    }
+
     public function test_sin_categorias_no_muestra_el_selector_de_categoria(): void
     {
         $this->peticion();

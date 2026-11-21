@@ -61,13 +61,14 @@
                 :percentage="$resumen['gastos']['variacion']" :comparison-label="$comparacion" invert-trend />
         </div>
         <div class="col-12 col-md-6 col-xxl-3">
-            <x-financial.kpi-card title="Balance" :amount="$resumen['balance']['monto']"
-                icon="bi-wallet2" type="primary" />
+            <x-financial.kpi-card title="Resultado financiero" :amount="$resumen['balance']['monto']"
+                icon="bi-wallet2" type="primary" caption="Ingresos − gastos"
+                :percentage="$resumen['balance']['variacion']" :comparison-label="$comparacion" />
         </div>
         <div class="col-12 col-md-6 col-xxl-3">
-            <x-financial.kpi-card title="Variación del balance" :amount="$resumen['balance']['diferencia']"
-                icon="bi-graph-up-arrow" type="info"
-                :percentage="$resumen['balance']['variacion']" :comparison-label="$comparacion" />
+            <x-financial.kpi-card title="Porcentaje de gastos" :amount="$resumen['porcentajeGastos']" format="percent"
+                icon="bi-percent" type="warning"
+                :caption="$resumen['porcentajeGastos'] === null ? 'Sin ingresos en el periodo' : 'De los ingresos del periodo'" />
         </div>
     </div>
 

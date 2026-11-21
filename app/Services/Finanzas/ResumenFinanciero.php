@@ -24,6 +24,7 @@ class ResumenFinanciero
      *     ingresos: array{monto: float, variacion: float|null},
      *     gastos: array{monto: float, variacion: float|null},
      *     balance: array{monto: float, anterior: float, diferencia: float, variacion: float|null},
+     *     porcentajeGastos: float|null,
      *     evolucion: array{etiquetas: list<string>, ingresos: list<float>, gastos: list<float>},
      *     distribucionGastos: array{etiquetas: list<string>, valores: list<float>},
      *     movimientos: list<Movimiento>
@@ -38,8 +39,9 @@ class ResumenFinanciero
         $ingresosAnteriores = $this->fuente->totalIngresos($anterior);
         $gastosAnteriores = $this->fuente->totalGastos($anterior);
 
-        $balance = round($ingresos - $gastos, 2);
-        $balanceAnterior = round($ingresosAnteriores - $gastosAnteriores, 2);
+        // Mismas fórmulas que los reportes (plan interno ANAF115): resultado y porcentaje de gastos.
+        $balance = ReporteFinanciero::resultadoFinanciero($ingresos, $gastos);
+        $balanceAnterior = ReporteFinanciero::resultadoFinanciero($ingresosAnteriores, $gastosAnteriores);
 
         $distribucion = $this->fuente->gastosPorCategoria($periodo);
 
@@ -55,6 +57,7 @@ class ResumenFinanciero
                 'diferencia' => round($balance - $balanceAnterior, 2),
                 'variacion' => self::variacionPorcentual($balance, $balanceAnterior),
             ],
+            'porcentajeGastos' => ReporteFinanciero::porcentajeDeGastos($ingresos, $gastos),
             'evolucion' => $this->evolucion($periodo),
             'distribucionGastos' => ['etiquetas' => array_keys($distribucion), 'valores' => array_values($distribucion)],
             'movimientos' => $this->fuente->movimientosRecientes($periodo, self::MOVIMIENTOS_RECIENTES),

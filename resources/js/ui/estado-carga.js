@@ -65,7 +65,8 @@ export function registrarEstadoDeCarga(documento = document, ventana = window) {
     documento.addEventListener('submit', (evento) => {
         const boton = evento.target.querySelector('[type="submit"][data-loading-text]');
 
-        if (!boton) {
+        // Un envío cancelado (p. ej. por las validaciones del cliente) no muestra carga.
+        if (!boton || evento.defaultPrevented) {
             return;
         }
 

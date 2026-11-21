@@ -1,4 +1,5 @@
-@props(['name', 'label' => null, 'value' => null, 'required' => false, 'min' => '0', 'step' => '0.01'])
+{{-- $positive: el monto debe ser mayor que cero (validación del cliente, data-monto-positivo). --}}
+@props(['name', 'label' => null, 'value' => null, 'required' => false, 'min' => '0', 'step' => '0.01', 'positive' => true])
 
 @php
     $id = $attributes->get('id', $name);
@@ -21,6 +22,7 @@
                min="{{ $min }}"
                step="{{ $step }}"
                inputmode="decimal"
+               @if ($positive) data-monto-positivo @endif
                @required($required)
                {{ $attributes->except('id')->class(['form-control', 'is-invalid' => $tieneError]) }}>
     </div>

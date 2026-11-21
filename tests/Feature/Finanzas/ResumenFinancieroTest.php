@@ -44,6 +44,23 @@ class ResumenFinancieroTest extends TestCase
         $this->assertSame(2750.25, $resumen['balance']['monto']);
     }
 
+    public function test_calcula_el_porcentaje_de_gastos_con_la_formula_del_plan(): void
+    {
+        $resumen = $this->resumenDeNoviembre([
+            $this->movimiento('2026-11-02', TipoMovimiento::Ingreso, 6000),
+            $this->movimiento('2026-11-05', TipoMovimiento::Gasto, 1500),
+        ]);
+
+        $this->assertSame(25.0, $resumen['porcentajeGastos']);
+    }
+
+    public function test_sin_ingresos_el_porcentaje_de_gastos_es_nulo(): void
+    {
+        $resumen = $this->resumenDeNoviembre([$this->movimiento('2026-11-05', TipoMovimiento::Gasto, 1500)]);
+
+        $this->assertNull($resumen['porcentajeGastos']);
+    }
+
     public function test_el_balance_es_negativo_cuando_los_gastos_superan_a_los_ingresos(): void
     {
         $resumen = $this->resumenDeNoviembre([

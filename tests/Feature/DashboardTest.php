@@ -52,7 +52,8 @@ class DashboardTest extends TestCase
 
         foreach ($tarjetas as $tarjeta) {
             if (str_contains($tarjeta, ">{$titulo}<")) {
-                return $tarjeta;
+                // La última tarjeta arrastra el resto de la página: se corta en la fila siguiente.
+                return strstr($tarjeta, '<div class="row', true) ?: $tarjeta;
             }
         }
 
@@ -98,9 +99,59 @@ class DashboardTest extends TestCase
         $this->assertStringContainsString('+20.0%', $this->tarjeta($respuesta, 'Total de ingresos'));
         $this->assertStringContainsString('vs. octubre 2026', $this->tarjeta($respuesta, 'Total de ingresos'));
         $this->assertStringContainsString('$2,500.00', $this->tarjeta($respuesta, 'Total de gastos'));
-        $this->assertStringContainsString('$3,500.00', $this->tarjeta($respuesta, 'Balance'));
-        $this->assertStringContainsString('$500.00', $this->tarjeta($respuesta, 'Variación del balance'));
-        $this->assertStringContainsString('+16.7%', $this->tarjeta($respuesta, 'Variación del balance'));
+        $this->assertStringContainsString('$3,500.00', $this->tarjeta($respuesta, 'Resultado financiero'));
+        $this->assertStringContainsString('+16.7%', $this->tarjeta($respuesta, 'Resultado financiero'));
+        $this->assertStringContainsString('41.7%', $this->tarjeta($respuesta, 'Porcentaje de gastos'));
+    }
+
+    public function test_muestra_las_cuatro_tarjetas_del_plan_en_orden(): void
+    {
+        $this->conMovimientos($this->octubreYNoviembre());
+
+        $respuesta = $this->verPanel();
+
+        $respuesta->assertSeeInOrder(['Total de ingresos', 'Total de gastos', 'Resultado financiero', 'Porcentaje de gastos'])
+            ->assertDontSee('Variación del balance');
+    }
+
+    public function test_el_porcentaje_de_gastos_divide_gastos_entre_ingresos(): void
+    {
+        $this->conMovimientos([
+            $this->movimiento('2026-11-01', TipoMovimiento::Ingreso, 8000),
+            $this->movimiento('2026-11-05', TipoMovimiento::Gasto, 2000),
+            $this->movimiento('2026-11-06', TipoMovimiento::Gasto, 1000.40),
+        ]);
+
+        $respuesta = $this->verPanel();
+
+        $tarjeta = $this->tarjeta($respuesta, 'Porcentaje de gastos');
+        $this->assertStringContainsString('37.5%', $tarjeta);
+        $this->assertStringContainsString('De los ingresos del periodo', $tarjeta);
+        $this->assertStringNotContainsString('$', $tarjeta);
+    }
+
+    public function test_sin_ingresos_el_porcentaje_de_gastos_no_se_calcula(): void
+    {
+        $this->conMovimientos([$this->movimiento('2026-11-05', TipoMovimiento::Gasto, 500)]);
+
+        $respuesta = $this->verPanel();
+
+        $tarjeta = $this->tarjeta($respuesta, 'Porcentaje de gastos');
+        $this->assertStringContainsString('No disponible', $tarjeta);
+        $this->assertStringContainsString('Sin ingresos en el periodo', $tarjeta);
+        $this->assertStringNotContainsString('%</span>', $tarjeta);
+    }
+
+    public function test_los_gastos_mayores_que_los_ingresos_superan_el_cien_por_ciento(): void
+    {
+        $this->conMovimientos([
+            $this->movimiento('2026-11-01', TipoMovimiento::Ingreso, 1000),
+            $this->movimiento('2026-11-05', TipoMovimiento::Gasto, 1500),
+        ]);
+
+        $respuesta = $this->verPanel();
+
+        $this->assertStringContainsString('150.0%', $this->tarjeta($respuesta, 'Porcentaje de gastos'));
     }
 
     public function test_un_aumento_de_ingresos_es_favorable_y_un_aumento_de_gastos_desfavorable(): void
@@ -149,7 +200,7 @@ class DashboardTest extends TestCase
 
         $respuesta = $this->verPanel();
 
-        $this->assertMatchesRegularExpression('/text-danger[^"]*">-\$500\.00</', $this->tarjeta($respuesta, 'Balance'));
+        $this->assertMatchesRegularExpression('/text-danger[^"]*">-\$500\.00</', $this->tarjeta($respuesta, 'Resultado financiero'));
     }
 
     public function test_sin_cambios_las_variaciones_se_muestran_neutras(): void
@@ -163,7 +214,7 @@ class DashboardTest extends TestCase
 
         $respuesta = $this->verPanel();
 
-        foreach (['Total de ingresos', 'Total de gastos', 'Variación del balance'] as $titulo) {
+        foreach (['Total de ingresos', 'Total de gastos', 'Resultado financiero'] as $titulo) {
             $tarjeta = $this->tarjeta($respuesta, $titulo);
             $this->assertStringContainsString('0.0%', $tarjeta);
             $this->assertStringContainsString('Sin variación', $tarjeta);

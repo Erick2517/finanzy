@@ -103,6 +103,18 @@ describe('registrarEstadoDeCarga', () => {
         assert.equal(boton.disabled, true);
     });
 
+    test('un envío cancelado por las validaciones no muestra el indicador de carga', () => {
+        const documento = documentoSimulado();
+        registrarEstadoDeCarga(documento, ventanaSimulada());
+        const boton = elementoSimulado('BUTTON');
+        const evento = { ...eventoSimulado({ querySelector: () => boton }), defaultPrevented: true };
+
+        documento.oyentes.submit(evento);
+
+        assert.equal(boton.disabled, false);
+        assert.equal(boton.dataset.cargando, undefined);
+    });
+
     test('los formularios sin texto de carga no se modifican', () => {
         const documento = documentoSimulado();
         registrarEstadoDeCarga(documento, ventanaSimulada());

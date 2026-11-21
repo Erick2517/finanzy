@@ -78,13 +78,15 @@
     });
 @endphp
 
-<form action="{{ $destino }}" method="GET" class="card card-body border-0 shadow-sm mb-4" novalidate>
+{{-- data-validar: validaciones del cliente (resources/js/ui/validaciones.js); el servidor valida igualmente --}}
+<form action="{{ $destino }}" method="GET" class="card card-body border-0 shadow-sm mb-4" data-validar novalidate>
     {{ $slot }}
 
     <div class="row g-3 align-items-start">
         <div @class(['col-12 col-sm-6', 'col-md-3' => $hayCategorias, 'col-md-4' => ! $hayCategorias])>
             <label for="fecha_inicio" class="form-label fw-semibold small">{{ $startLabel }}</label>
             <input {{ $atributosDeCampo }} id="fecha_inicio" name="fecha_inicio" value="{{ $fechaInicio }}"
+                   data-requerido-con="fecha_fin"
                    @class(['form-control', 'is-invalid' => $errors->has('fecha_inicio')])
                    @error('fecha_inicio') aria-describedby="fecha_inicio-error" aria-invalid="true" @enderror>
             @error('fecha_inicio')
@@ -95,6 +97,7 @@
         <div @class(['col-12 col-sm-6', 'col-md-3' => $hayCategorias, 'col-md-4' => ! $hayCategorias])>
             <label for="fecha_fin" class="form-label fw-semibold small">{{ $endLabel }}</label>
             <input {{ $atributosDeCampo }} id="fecha_fin" name="fecha_fin" value="{{ $fechaFin }}"
+                   data-requerido-con="fecha_inicio" data-fecha-desde="fecha_inicio"
                    @class(['form-control', 'is-invalid' => $errors->has('fecha_fin')])
                    @error('fecha_fin') aria-describedby="fecha_fin-error" aria-invalid="true" @enderror>
             @error('fecha_fin')
