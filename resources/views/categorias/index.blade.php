@@ -24,19 +24,7 @@
                         </div>
                     @endif
 
-                    <!-- MENSAJES DE ÉXITO -->
-                    @if (session('success'))
-                        <div class="alert alert-success">
-                            {{ session('success') }}
-                        </div>
-                    @endif
-
-                    <!-- MENSAJES DE ADVERTENCIA -->
-                    @if (session('error'))
-                        <div class="alert alert-danger">
-                            {{ session('error') }}
-                        </div>
-                    @endif
+                    {{-- Los mensajes de sesión (success / error) los muestra el layout general. --}}
 
                     <form
                         action="{{ route('categorias.store') }}"

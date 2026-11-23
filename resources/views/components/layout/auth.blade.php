@@ -16,7 +16,7 @@
         <div class="row justify-content-center w-100">
             <div class="col-12 col-sm-10 col-md-7 col-lg-5">
                 <div class="text-center mb-4">
-                    <a href="{{ url('/') }}" class="text-decoration-none text-dark fw-bold fs-3 d-inline-flex align-items-center gap-2">
+                    <a href="{{ rescue(fn () => auth()->check(), false, false) ? route('dashboard') : route('login') }}" class="text-decoration-none text-dark fw-bold fs-3 d-inline-flex align-items-center gap-2">
                         <i class="bi bi-wallet2"></i> Finanzy
                     </a>
                 </div>

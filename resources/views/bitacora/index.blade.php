@@ -93,12 +93,5 @@
         @endforeach
     </x-ui.data-table>
 
-    @if ($registros->total() > 0)
-        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2 mt-3">
-            <span class="small text-muted">
-                Mostrando {{ $registros->firstItem() }} a {{ $registros->lastItem() }} de {{ $registros->total() }} registros
-            </span>
-            {{ $registros->links('pagination::bootstrap-5') }}
-        </div>
-    @endif
+    <x-ui.pagination :paginator="$registros" label="registros" />
 </x-layout.app>

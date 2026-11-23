@@ -1,33 +1,50 @@
 @props(['activeRoute' => null])
 
 @php
+    /*
+     * clave: prefijo de la URL que marca el módulo como activo.
+     * ruta:  nombre de la ruta de Laravel. Si todavía no está registrada, el módulo
+     *        se muestra como "Próximamente" y se activa solo cuando la ruta exista.
+     */
     $modulos = [
-        ['ruta' => 'dashboard',  'etiqueta' => 'Panel Financiero',  'icono' => 'bi-speedometer2'],
-        ['ruta' => 'ingresos',   'etiqueta' => 'Ingresos',          'icono' => 'bi-arrow-down-circle'],
-        ['ruta' => 'gastos',     'etiqueta' => 'Gastos',            'icono' => 'bi-arrow-up-circle'],
-        ['ruta' => 'categorias', 'etiqueta' => 'Categorías',        'icono' => 'bi-tags'],
-        ['ruta' => 'reportes',   'etiqueta' => 'Reportes',          'icono' => 'bi-file-earmark-bar-graph'],
+        ['clave' => 'dashboard',  'ruta' => 'dashboard',        'etiqueta' => 'Panel Financiero', 'icono' => 'bi-speedometer2'],
+        ['clave' => 'ingresos',   'ruta' => 'ingresos.index',   'etiqueta' => 'Ingresos',         'icono' => 'bi-arrow-down-circle'],
+        ['clave' => 'gastos',     'ruta' => 'gastos.index',     'etiqueta' => 'Gastos',           'icono' => 'bi-arrow-up-circle'],
+        ['clave' => 'categorias', 'ruta' => 'categorias.index', 'etiqueta' => 'Categorías',       'icono' => 'bi-tags'],
+        ['clave' => 'reportes',   'ruta' => 'reportes.index',   'etiqueta' => 'Reportes',         'icono' => 'bi-file-earmark-bar-graph'],
     ];
 
     $modulosAdministracion = [
-        ['ruta' => 'usuarios', 'etiqueta' => 'Usuarios', 'icono' => 'bi-people'],
-        ['ruta' => 'bitacora', 'etiqueta' => 'Bitácora', 'icono' => 'bi-journal-text'],
+        ['clave' => 'usuarios', 'ruta' => 'usuarios.index', 'etiqueta' => 'Usuarios', 'icono' => 'bi-people'],
+        ['clave' => 'bitacora', 'ruta' => 'bitacora.index', 'etiqueta' => 'Bitácora', 'icono' => 'bi-journal-text'],
     ];
 @endphp
 
-<aside class="bg-white border-end p-3 flex-shrink-0" style="width: 250px;">
-    <nav class="nav flex-column gap-1">
-        @foreach ($modulos as $modulo)
-            <x-layout.sidebar-link :modulo="$modulo" :active-route="$activeRoute" />
-        @endforeach
+{{-- Escritorio (lg o más): columna fija. Móvil: offcanvas que abre el botón de menú de la navbar. --}}
+<div class="app-sidebar">
+    <aside class="offcanvas-lg offcanvas-start" id="sidebarMenu" tabindex="-1" aria-labelledby="sidebarMenuLabel">
+        <div class="offcanvas-header border-bottom">
+            <h2 class="offcanvas-title h5 fw-bold d-flex align-items-center gap-2 mb-0" id="sidebarMenuLabel">
+                <i class="bi bi-wallet2" aria-hidden="true"></i> Finanzy
+            </h2>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#sidebarMenu" aria-label="Cerrar menú"></button>
+        </div>
 
-        @role('Administrador')
-            <hr class="my-2">
-            <span class="text-uppercase text-muted small fw-semibold px-2 mb-1">Administración</span>
+        <div class="offcanvas-body">
+            <nav class="nav flex-column gap-1 w-100 p-lg-3" aria-label="Menú principal">
+                @foreach ($modulos as $modulo)
+                    <x-layout.sidebar-link :modulo="$modulo" :active-route="$activeRoute" />
+                @endforeach
 
-            @foreach ($modulosAdministracion as $modulo)
-                <x-layout.sidebar-link :modulo="$modulo" :active-route="$activeRoute" />
-            @endforeach
-        @endrole
-    </nav>
-</aside>
+                @role('Administrador')
+                    <hr class="my-2">
+                    <span class="text-uppercase text-muted small fw-semibold px-2 mb-1">Administración</span>
+
+                    @foreach ($modulosAdministracion as $modulo)
+                        <x-layout.sidebar-link :modulo="$modulo" :active-route="$activeRoute" />
+                    @endforeach
+                @endrole
+            </nav>
+        </div>
+    </aside>
+</div>

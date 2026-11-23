@@ -3,14 +3,14 @@
 namespace Tests\Feature;
 
 use App\Http\Middleware\EnsureUserIsActive;
+use App\Http\Requests\FiltrarBitacoraRequest;
+use App\Http\Requests\FiltrarUsuariosRequest;
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RegisterRequest;
 use App\Http\Requests\ResetPasswordRequest;
 use App\Http\Requests\SendResetLinkRequest;
 use App\Http\Requests\StoreDemoRequest;
 use App\Http\Requests\StoreUserRequest;
-use App\Http\Requests\FiltrarBitacoraRequest;
-use App\Http\Requests\FiltrarUsuariosRequest;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\RoleSeeder;
@@ -363,6 +363,9 @@ class AuditoriaSeguridadTest extends TestCase
 
     public function test_registro_de_demo_rechaza_datos_invalidos(): void
     {
+        // /demo exige sesión desde la revisión de experiencia general.
+        $this->actingAs($this->usuarioCon('Empleado'));
+
         $this->from('/demo')->post('/demo', [
             'descripcion' => '',
             'monto' => 0,
