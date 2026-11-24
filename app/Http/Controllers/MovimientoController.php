@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Http\Requests\GuardarMovimientoRequest;
 use App\Models\Categoria;
 use App\Models\MovimientoFinanciero;
+use App\Services\AuditLogger;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -38,7 +40,15 @@ class MovimientoController extends Controller
         $datos = $request->safe()->only(['categoria_id', 'monto', 'fecha', 'concepto']);
         $tipo = $request->validated('tipo');
 
-        MovimientoFinanciero::create($datos + ['user_id' => $request->user()->id]);
+        DB::transaction(function () use ($datos, $request, $tipo): void {
+            $movimiento = MovimientoFinanciero::create($datos + ['user_id' => $request->user()->id]);
+
+            AuditLogger::log(
+                'crear',
+                $this->moduloDeTipo($tipo),
+                "Registró movimiento #{$movimiento->id}: {$this->detalleMovimiento($movimiento)}.",
+            );
+        });
 
         return to_route($this->rutaDeTipo($tipo))
             ->with('success', ucfirst($tipo).' registrado correctamente.');
@@ -47,10 +57,22 @@ class MovimientoController extends Controller
     public function update(GuardarMovimientoRequest $request, MovimientoFinanciero $movimiento): RedirectResponse
     {
         abort_unless($movimiento->activo, 404);
+        $tipo = $request->validated('tipo');
 
-        $movimiento->update($request->safe()->only(['categoria_id', 'monto', 'fecha', 'concepto']));
+        DB::transaction(function () use ($movimiento, $request, $tipo): void {
+            $detalleAnterior = $this->detalleMovimiento($movimiento);
+            $movimiento->update($request->safe()->only(['categoria_id', 'monto', 'fecha', 'concepto']));
+            $movimiento->unsetRelation('categoria');
+            $detalleActual = $this->detalleMovimiento($movimiento);
 
-        return to_route($this->rutaDeTipo($movimiento->categoria->tipo))
+            AuditLogger::log(
+                'editar',
+                $this->moduloDeTipo($tipo),
+                "Editó movimiento #{$movimiento->id}. Antes: {$detalleAnterior}. Después: {$detalleActual}.",
+            );
+        });
+
+        return to_route($this->rutaDeTipo($tipo))
             ->with('success', 'Movimiento actualizado correctamente.');
     }
 
@@ -58,8 +80,17 @@ class MovimientoController extends Controller
     {
         abort_unless($movimiento->activo, 404);
         $tipo = $movimiento->categoria->tipo;
+        $detalle = $this->detalleMovimiento($movimiento);
 
-        $movimiento->update(['activo' => false]);
+        DB::transaction(function () use ($movimiento, $tipo, $detalle): void {
+            $movimiento->update(['activo' => false]);
+
+            AuditLogger::log(
+                'desactivar',
+                $this->moduloDeTipo($tipo),
+                "Desactivó movimiento #{$movimiento->id}: {$detalle}.",
+            );
+        });
 
         return to_route($this->rutaDeTipo($tipo))
             ->with('success', 'Movimiento desactivado; su historial se conservó.');
@@ -69,8 +100,17 @@ class MovimientoController extends Controller
     {
         abort_if($movimiento->activo, 404);
         $tipo = $movimiento->categoria->tipo;
+        $detalle = $this->detalleMovimiento($movimiento);
 
-        $movimiento->update(['activo' => true]);
+        DB::transaction(function () use ($movimiento, $tipo, $detalle): void {
+            $movimiento->update(['activo' => true]);
+
+            AuditLogger::log(
+                'activar',
+                $this->moduloDeTipo($tipo),
+                "Reactivó movimiento #{$movimiento->id}: {$detalle}.",
+            );
+        });
 
         return to_route($this->rutaDeTipo($tipo))
             ->with('success', 'Movimiento reactivado correctamente.');
@@ -125,5 +165,17 @@ class MovimientoController extends Controller
     private function rutaDeTipo(string $tipo): string
     {
         return $tipo === 'ingreso' ? 'ingresos.index' : 'gastos.index';
+    }
+
+    private function moduloDeTipo(string $tipo): string
+    {
+        return $tipo === 'ingreso' ? 'ingresos' : 'gastos';
+    }
+
+    private function detalleMovimiento(MovimientoFinanciero $movimiento): string
+    {
+        $movimiento->loadMissing('categoria');
+
+        return "concepto «{$movimiento->concepto}», categoría «{$movimiento->categoria->nombre}», monto {$movimiento->monto}, fecha {$movimiento->fecha->toDateString()}";
     }
 }

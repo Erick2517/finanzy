@@ -282,9 +282,40 @@ class IntegracionFinanzasTest extends TestCase
             'concepto' => 'Tinta para impresora',
             'activo' => true,
         ]);
+        $movimiento = MovimientoFinanciero::query()->where('concepto', 'Tinta para impresora')->firstOrFail();
+
+        $this->assertDatabaseHas('activity_logs', [
+            'user_id' => $this->usuario->id,
+            'action' => 'crear',
+            'module' => 'gastos',
+            'description' => "Registró movimiento #{$movimiento->id}: concepto «Tinta para impresora», categoría «Insumos», monto 45.90, fecha 2026-11-12.",
+        ]);
 
         $this->actingAs($this->usuario)->get('/reportes?tipo=diario&fecha_inicio=2026-11-01&fecha_fin=2026-11-30')
             ->assertSee('Tinta para impresora');
+    }
+
+    public function test_un_ingreso_registrado_se_audita_en_el_modulo_de_ingresos(): void
+    {
+        $this->actingAs($this->usuario)
+            ->post(route('movimientos.store'), [
+                'tipo' => 'ingreso',
+                'categoria_id' => $this->salario->id,
+                'monto' => '125.50',
+                'fecha' => '2026-11-18',
+                'concepto' => 'Venta diaria',
+            ])
+            ->assertRedirect(route('ingresos.index'))
+            ->assertSessionHas('success');
+
+        $movimiento = MovimientoFinanciero::query()->where('concepto', 'Venta diaria')->firstOrFail();
+
+        $this->assertDatabaseHas('activity_logs', [
+            'user_id' => $this->usuario->id,
+            'action' => 'crear',
+            'module' => 'ingresos',
+            'description' => "Registró movimiento #{$movimiento->id}: concepto «Venta diaria», categoría «Salario», monto 125.50, fecha 2026-11-18.",
+        ]);
     }
 
     public function test_un_usuario_puede_editar_desactivar_y_reactivar_movimientos_compartidos(): void
@@ -334,6 +365,26 @@ class IntegracionFinanzasTest extends TestCase
             'id' => $movimiento->id,
             'activo' => true,
         ]);
+
+        $this->assertDatabaseHas('activity_logs', [
+            'user_id' => $gerente->id,
+            'action' => 'editar',
+            'module' => 'gastos',
+            'description' => "Editó movimiento #{$movimiento->id}. Antes: concepto «Compra para editar», categoría «Insumos», monto 45.90, fecha 2026-11-12. Después: concepto «Compra actualizada», categoría «Insumos», monto 50.00, fecha 2026-11-13.",
+        ]);
+        $this->assertDatabaseHas('activity_logs', [
+            'user_id' => $gerente->id,
+            'action' => 'desactivar',
+            'module' => 'gastos',
+            'description' => "Desactivó movimiento #{$movimiento->id}: concepto «Compra actualizada», categoría «Insumos», monto 50.00, fecha 2026-11-13.",
+        ]);
+        $this->assertDatabaseHas('activity_logs', [
+            'user_id' => $gerente->id,
+            'action' => 'activar',
+            'module' => 'gastos',
+            'description' => "Reactivó movimiento #{$movimiento->id}: concepto «Compra actualizada», categoría «Insumos», monto 50.00, fecha 2026-11-13.",
+        ]);
+        $this->assertDatabaseCount('activity_logs', 3);
     }
 
     public function test_el_registro_valida_el_monto_la_fecha_y_el_concepto(): void
@@ -343,6 +394,7 @@ class IntegracionFinanzasTest extends TestCase
             ->assertSessionHasErrors(['monto', 'fecha', 'concepto']);
 
         $this->assertDatabaseCount('movimientos_financieros', 4);
+        $this->assertDatabaseCount('activity_logs', 0);
     }
 
     public function test_los_errores_del_registro_se_muestran_en_espanol(): void
