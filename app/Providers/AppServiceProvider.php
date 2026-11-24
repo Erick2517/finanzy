@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use Illuminate\Support\Facades\URL;
 use App\Services\Finanzas\FuenteDatosFinancieros;
 use App\Services\Finanzas\MovimientosFinancierosEloquent;
 use Illuminate\Support\ServiceProvider;
@@ -25,6 +26,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        //fuerza https en render
+        if (app()->environment('production')) {
+            URL::forceScheme('https');
+        }
     }
 }
