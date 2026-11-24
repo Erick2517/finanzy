@@ -13,7 +13,6 @@ RUN apt-get update \
         libjpeg62-turbo-dev \
         libonig-dev \
         libpng-dev \
-        libpq-dev \
         libxml2-dev \
         libzip-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
@@ -38,7 +37,9 @@ COPY --from=frontend /app/public/build ./public/build
 
 RUN composer dump-autoload --no-dev --no-interaction --optimize \
     && mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
-    && chown -R www-data:www-data storage bootstrap/cache
+    && chown -R www-data:www-data storage bootstrap/cache \
+    && sed -i 's/\r$//' docker-entrypoint.sh \
+    && chmod +x docker-entrypoint.sh
 
 ENV APP_ENV=production \
     APP_DEBUG=false
@@ -47,4 +48,4 @@ USER www-data
 
 EXPOSE 10000
 
-CMD ["sh", "-c", "php artisan serve --host=0.0.0.0 --port=${PORT:-10000}"]
+CMD ["./docker-entrypoint.sh"]
