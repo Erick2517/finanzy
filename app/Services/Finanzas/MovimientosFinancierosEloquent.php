@@ -8,10 +8,10 @@ use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Support\Str;
 
 /**
- * Datos financieros reales: los movimientos y categorías que cada usuario registra
- * (tablas movimientos_financieros y categorias).
+ * Datos financieros reales y compartidos de la empresa (tablas movimientos_financieros
+ * y categorias).
  *
- * Solo consulta los registros del usuario autenticado; sin sesión no devuelve nada.
+ * Cualquier usuario autenticado consulta los mismos movimientos; sin sesión no devuelve nada.
  * El tipo (ingreso o gasto) de cada movimiento es el de su categoría. Los totales y
  * agrupaciones se delegan en MovimientosEnMemoria para no duplicar los cálculos.
  */
@@ -56,7 +56,7 @@ class MovimientosFinancierosEloquent implements FuenteDatosFinancieros
     }
 
     /**
-     * Categorías del usuario: id => nombre. Si un nombre se repite (p. ej. «Otros» de
+     * Categorías de la empresa: id => nombre. Si un nombre se repite (p. ej. «Otros» de
      * ingreso y de gasto), se añade el tipo para distinguirlas.
      */
     public function categorias(): array
@@ -67,7 +67,7 @@ class MovimientosFinancierosEloquent implements FuenteDatosFinancieros
             return [];
         }
 
-        $categorias = Categoria::query()->where('user_id', $usuario)->get(['id', 'nombre', 'tipo']);
+        $categorias = Categoria::query()->get(['id', 'nombre', 'tipo']);
         $repetidos = $categorias->countBy(fn (Categoria $categoria) => Str::lower($categoria->nombre))->filter(fn (int $veces) => $veces > 1);
 
         return $categorias
@@ -86,7 +86,7 @@ class MovimientosFinancierosEloquent implements FuenteDatosFinancieros
     }
 
     /**
-     * Movimientos del usuario en el periodo (y de una categoría, si se indica), cargados
+     * Movimientos de la empresa en el periodo (y de una categoría, si se indica), cargados
      * una sola vez por petición aunque el panel pida varios indicadores.
      */
     private function delPeriodo(Periodo $periodo, ?string $categoria = null): MovimientosEnMemoria
@@ -110,7 +110,7 @@ class MovimientosFinancierosEloquent implements FuenteDatosFinancieros
         // Límite superior exclusivo (día siguiente): incluye el último día aunque la
         // base de datos guarde la fecha con hora (SQLite).
         return MovimientoFinanciero::query()
-            ->where('user_id', $usuario)
+            ->activos()
             ->where('fecha', '>=', $periodo->inicio->toDateString())
             ->where('fecha', '<', $periodo->fin->addDay()->toDateString())
             ->when($categoria, fn ($consulta, string $id) => $consulta->where('categoria_id', $id))

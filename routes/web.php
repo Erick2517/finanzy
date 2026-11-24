@@ -43,15 +43,20 @@ Route::middleware('auth')->prefix('reportes')->name('reportes.')->group(function
     Route::get('/csv', [ExportarReporteController::class, 'csv'])->name('csv');
 });
 
-// Categorías y movimientos financieros: cada usuario accede exclusivamente a sus datos.
+// Categorías y movimientos financieros: accesibles a todos los usuarios autenticados.
 Route::middleware('auth')->group(function () {
     Route::get('/categorias', [CategoriaController::class, 'index'])->name('categorias.index');
     Route::post('/categorias', [CategoriaController::class, 'store'])->name('categorias.store');
     Route::put('/categorias/{categoria}', [CategoriaController::class, 'update'])->name('categorias.update');
     Route::delete('/categorias/{categoria}', [CategoriaController::class, 'destroy'])->name('categorias.destroy');
 
+    Route::get('/ingresos', [MovimientoController::class, 'ingresos'])->name('ingresos.index');
+    Route::get('/gastos', [MovimientoController::class, 'gastos'])->name('gastos.index');
     Route::get('/movimientos/registrar', [MovimientoController::class, 'create'])->name('movimientos.create');
     Route::post('/movimientos', [MovimientoController::class, 'store'])->name('movimientos.store');
+    Route::put('/movimientos/{movimiento}', [MovimientoController::class, 'update'])->name('movimientos.update');
+    Route::delete('/movimientos/{movimiento}', [MovimientoController::class, 'destroy'])->name('movimientos.destroy');
+    Route::patch('/movimientos/{movimiento}/activar', [MovimientoController::class, 'activar'])->name('movimientos.activar');
 });
 
 Route::middleware(['auth', 'role:Administrador'])->group(function () {

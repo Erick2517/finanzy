@@ -68,7 +68,7 @@ class IntegracionFinanzasTest extends TestCase
         return explode("\n", trim($respuesta->streamedContent()));
     }
 
-    public function test_el_panel_muestra_los_datos_reales_del_usuario(): void
+    public function test_el_panel_muestra_los_datos_reales_de_la_empresa(): void
     {
         $respuesta = $this->actingAs($this->usuario)->get('/dashboard');
 
@@ -81,35 +81,41 @@ class IntegracionFinanzasTest extends TestCase
             ->assertSee('Nómina de noviembre');
     }
 
-    public function test_un_usuario_no_ve_los_datos_de_otro_en_el_panel_ni_en_los_reportes(): void
+    public function test_cualquier_usuario_puede_revisar_los_movimientos_de_la_empresa(): void
     {
-        $otro = User::factory()->create();
-        $this->movimiento($this->categoria($otro, 'Honorarios', 'ingreso'), '2026-11-03', 777, 'Ingreso del otro usuario');
+        $cajero = User::factory()->create();
+        $this->movimiento($this->categoria($cajero, 'Honorarios', 'ingreso'), '2026-11-03', 777, 'Ingreso de empresa');
+        $gerente = User::factory()->create();
 
-        $this->actingAs($otro)->get('/dashboard')
+        $this->actingAs($gerente)->get('/dashboard')
             ->assertOk()
             ->assertSee('$777.00')
-            ->assertDontSee('Nómina de noviembre')
-            ->assertDontSee('$5,000.00');
+            ->assertSee('Nómina de noviembre')
+            ->assertSee('$5,000.00');
 
-        $this->actingAs($otro)->get('/reportes?tipo=anual&fecha_inicio=2026&fecha_fin=2026')
+        $this->actingAs($gerente)->get('/reportes?tipo=anual&fecha_inicio=2026&fecha_fin=2026')
             ->assertOk()
-            ->assertSee('Ingreso del otro usuario')
-            ->assertDontSee('Renta de oficina')
-            ->assertDontSee('Alquiler');
+            ->assertSee('Ingreso de empresa')
+            ->assertSee('Renta de oficina')
+            ->assertSee('Alquiler');
 
-        $csv = implode("\n", $this->lineasDelCsv('?tipo=anual&fecha_inicio=2026&fecha_fin=2026', $otro));
-        $this->assertStringNotContainsString('Renta de oficina', $csv);
+        $csv = implode("\n", $this->lineasDelCsv('?tipo=anual&fecha_inicio=2026&fecha_fin=2026', $gerente));
+        $this->assertStringContainsString('Renta de oficina', $csv);
     }
 
-    public function test_un_usuario_no_puede_filtrar_por_la_categoria_de_otro(): void
+    public function test_un_usuario_puede_filtrar_por_cualquier_categoria_de_la_empresa(): void
     {
-        $otro = User::factory()->create();
+        $gerente = User::factory()->create();
         $consulta = '?categoria_id='.$this->alquiler->id;
 
-        $this->actingAs($otro)->get('/reportes'.$consulta)->assertSessionHasErrors('categoria_id');
-        $this->actingAs($otro)->get('/reportes/csv'.$consulta)->assertSessionHasErrors('categoria_id');
-        $this->actingAs($otro)->get('/reportes/pdf'.$consulta)->assertSessionHasErrors('categoria_id');
+        $this->actingAs($gerente)->get('/reportes'.$consulta)
+            ->assertOk()
+            ->assertSee('Renta de oficina');
+
+        $csv = implode("\n", $this->lineasDelCsv($consulta, $gerente));
+        $this->assertStringContainsString('Renta de oficina', $csv);
+
+        $this->actingAs($gerente)->get('/reportes/pdf'.$consulta)->assertOk();
     }
 
     public function test_los_reportes_diario_mensual_y_anual_usan_los_datos_reales(): void
@@ -183,6 +189,7 @@ class IntegracionFinanzasTest extends TestCase
 
     public function test_sin_ingresos_el_porcentaje_de_gastos_no_esta_disponible(): void
     {
+        $this->salario->movimientos()->update(['activo' => false]);
         $usuario = User::factory()->create();
         $this->movimiento($this->categoria($usuario, 'Alquiler', 'gasto'), '2026-11-05', 900, 'Solo un gasto');
 
@@ -190,11 +197,13 @@ class IntegracionFinanzasTest extends TestCase
             ->assertOk()
             ->assertSee('No disponible')
             ->assertSee('Sin ingresos en el periodo')
-            ->assertSee('-$900.00');
+            ->assertSee('-$2,410.00');
     }
 
     public function test_sin_gastos_el_porcentaje_de_gastos_es_cero(): void
     {
+        $this->alquiler->movimientos()->update(['activo' => false]);
+        $this->insumos->movimientos()->update(['activo' => false]);
         $usuario = User::factory()->create();
         $this->movimiento($this->categoria($usuario, 'Salario', 'ingreso'), '2026-11-02', 1200, 'Solo un ingreso');
 
@@ -206,6 +215,7 @@ class IntegracionFinanzasTest extends TestCase
 
     public function test_sin_movimientos_las_pantallas_y_el_csv_funcionan_vacios(): void
     {
+        MovimientoFinanciero::query()->update(['activo' => false]);
         $usuario = User::factory()->create();
 
         $this->actingAs($usuario)->get('/dashboard')
@@ -219,52 +229,117 @@ class IntegracionFinanzasTest extends TestCase
         $this->assertSame(["\xEF\xBB\xBFFecha;Tipo;Categoría;Descripción;Monto"], $this->lineasDelCsv('', $usuario));
     }
 
-    public function test_el_formulario_de_registro_solo_ofrece_las_categorias_del_usuario(): void
+    public function test_el_modulo_de_gastos_ofrece_las_categorias_compartidas(): void
     {
         $otro = User::factory()->create();
         $this->categoria($otro, 'Categoría ajena', 'gasto');
 
-        $this->actingAs($this->usuario)->get(route('movimientos.create'))
+        $this->actingAs($this->usuario)->get(route('gastos.index'))
             ->assertOk()
-            ->assertSee('Salario (Ingreso)')
-            ->assertSee('Alquiler (Gasto)')
-            ->assertDontSee('Categoría ajena');
+            ->assertSee('Alquiler')
+            ->assertSee('Categoría ajena')
+            ->assertSee('data-bs-target="#modalRegistro"', false);
     }
 
-    public function test_sin_categorias_el_registro_pide_crear_una_primero(): void
+    public function test_el_listado_de_gastos_filtra_por_categoria_y_fecha(): void
     {
-        $this->actingAs(User::factory()->create())->get(route('movimientos.create'))
+        $gerente = User::factory()->create();
+
+        $this->actingAs($gerente)->get(route('gastos.index', [
+            'categoria_id' => $this->alquiler->id,
+            'fecha_desde' => '2026-11-05',
+            'fecha_hasta' => '2026-11-05',
+        ]))
             ->assertOk()
-            ->assertSee('Debes crear al menos una categoría antes de registrar movimientos.')
-            ->assertSee('href="'.route('categorias.index').'"', false);
+            ->assertSee('Renta de oficina')
+            ->assertDontSee('Compra de papel')
+            ->assertDontSee('HYPERLINK');
+    }
+
+    public function test_la_ruta_anterior_de_registro_redirige_al_modulo_de_ingresos(): void
+    {
+        $this->actingAs(User::factory()->create())
+            ->get(route('movimientos.create'))
+            ->assertRedirect(route('ingresos.index'));
     }
 
     public function test_un_movimiento_registrado_aparece_en_los_reportes(): void
     {
         $this->actingAs($this->usuario)
             ->post(route('movimientos.store'), [
+                'tipo' => 'gasto',
                 'categoria_id' => $this->insumos->id,
                 'monto' => '45.90',
                 'fecha' => '2026-11-12',
                 'concepto' => 'Tinta para impresora',
             ])
-            ->assertRedirect(route('movimientos.create'))
+            ->assertRedirect(route('gastos.index'))
             ->assertSessionHas('success');
 
         $this->assertDatabaseHas('movimientos_financieros', [
             'user_id' => $this->usuario->id,
             'categoria_id' => $this->insumos->id,
             'concepto' => 'Tinta para impresora',
+            'activo' => true,
         ]);
 
         $this->actingAs($this->usuario)->get('/reportes?tipo=diario&fecha_inicio=2026-11-01&fecha_fin=2026-11-30')
             ->assertSee('Tinta para impresora');
     }
 
+    public function test_un_usuario_puede_editar_desactivar_y_reactivar_movimientos_compartidos(): void
+    {
+        $gerente = User::factory()->create();
+        $movimiento = MovimientoFinanciero::create([
+            'user_id' => $this->usuario->id,
+            'categoria_id' => $this->insumos->id,
+            'monto' => 45.90,
+            'fecha' => '2026-11-12',
+            'concepto' => 'Compra para editar',
+        ]);
+
+        $this->actingAs($gerente)->put(route('movimientos.update', $movimiento), [
+            'tipo' => 'gasto',
+            'movimiento_id' => $movimiento->id,
+            'categoria_id' => $this->insumos->id,
+            'monto' => '50.00',
+            'fecha' => '2026-11-13',
+            'concepto' => 'Compra actualizada',
+        ])->assertRedirect(route('gastos.index'));
+
+        $this->assertDatabaseHas('movimientos_financieros', [
+            'id' => $movimiento->id,
+            'monto' => '50.00',
+            'concepto' => 'Compra actualizada',
+            'activo' => true,
+        ]);
+
+        $this->actingAs($gerente)->delete(route('movimientos.destroy', $movimiento))
+            ->assertRedirect(route('gastos.index'));
+
+        $this->assertDatabaseHas('movimientos_financieros', [
+            'id' => $movimiento->id,
+            'activo' => false,
+        ]);
+        $this->actingAs($gerente)->get(route('gastos.index', ['estado' => 'inactivos']))
+            ->assertOk()
+            ->assertSee('Compra actualizada');
+        $this->actingAs($gerente)->get('/reportes?tipo=anual&fecha_inicio=2026&fecha_fin=2026')
+            ->assertDontSee('Compra actualizada');
+
+        $this->actingAs($gerente)->patch(route('movimientos.activar', $movimiento))
+            ->assertRedirect(route('gastos.index'));
+
+        $this->assertDatabaseHas('movimientos_financieros', [
+            'id' => $movimiento->id,
+            'activo' => true,
+        ]);
+    }
+
     public function test_el_registro_valida_el_monto_la_fecha_y_el_concepto(): void
     {
         $this->actingAs($this->usuario)
-            ->post(route('movimientos.store'), ['categoria_id' => $this->insumos->id, 'monto' => '0', 'fecha' => 'no-es-fecha', 'concepto' => ''])
+            ->post(route('movimientos.store'), ['tipo' => 'gasto', 'categoria_id' => $this->insumos->id, 'monto' => '0', 'fecha' => 'no-es-fecha', 'concepto' => ''])
             ->assertSessionHasErrors(['monto', 'fecha', 'concepto']);
 
         $this->assertDatabaseCount('movimientos_financieros', 4);
@@ -273,14 +348,14 @@ class IntegracionFinanzasTest extends TestCase
     public function test_los_errores_del_registro_se_muestran_en_espanol(): void
     {
         $this->actingAs($this->usuario)
-            ->post(route('movimientos.store'), ['categoria_id' => 999999, 'monto' => '0', 'fecha' => '2026-11-12', 'concepto' => 'Prueba'])
+            ->post(route('movimientos.store'), ['tipo' => 'gasto', 'categoria_id' => 999999, 'monto' => '0', 'fecha' => '2026-11-12', 'concepto' => 'Prueba'])
             ->assertSessionHasErrors([
                 'categoria_id' => 'El valor seleccionado en categoría no es válido.',
                 'monto' => 'El campo monto debe ser mayor que 0.',
             ]);
 
         $this->actingAs($this->usuario)
-            ->post(route('movimientos.store'), ['categoria_id' => $this->insumos->id, 'monto' => '10.555', 'fecha' => '2026-11-12', 'concepto' => 'Prueba'])
+            ->post(route('movimientos.store'), ['tipo' => 'gasto', 'categoria_id' => $this->insumos->id, 'monto' => '10.555', 'fecha' => '2026-11-12', 'concepto' => 'Prueba'])
             ->assertSessionHasErrors(['monto' => 'El monto puede tener como máximo dos decimales.']);
     }
 
@@ -289,6 +364,7 @@ class IntegracionFinanzasTest extends TestCase
         $otro = User::factory()->create();
 
         $this->actingAs($this->usuario)->post(route('movimientos.store'), [
+            'tipo' => 'gasto',
             'user_id' => $otro->id,
             'categoria_id' => $this->insumos->id,
             'monto' => '12.00',
@@ -354,6 +430,8 @@ class IntegracionFinanzasTest extends TestCase
 
     public function test_las_nuevas_rutas_exigen_sesion(): void
     {
+        $this->get(route('ingresos.index'))->assertRedirect(route('login'));
+        $this->get(route('gastos.index'))->assertRedirect(route('login'));
         $this->get(route('movimientos.create'))->assertRedirect(route('login'));
         $this->post(route('movimientos.store'))->assertRedirect(route('login'));
         $this->get(route('reportes.csv'))->assertRedirect(route('login'));
@@ -365,5 +443,9 @@ class IntegracionFinanzasTest extends TestCase
             ->assertOk()
             ->assertSee('Salario')
             ->assertSee('aria-current="page"', false);
+
+        $this->actingAs($this->usuario)->get(route('ingresos.index'))
+            ->assertOk()
+            ->assertSee(route('gastos.index'), false);
     }
 }
