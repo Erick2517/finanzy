@@ -2,30 +2,33 @@
 
 namespace App\Http\Requests;
 
+use App\Models\MovimientoFinanciero;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-/**
- * Registro de un movimiento financiero. La categoría debe pertenecer al usuario
- * autenticado: así nadie puede registrar movimientos en categorías ajenas.
- */
-class RegistrarMovimientoRequest extends FormRequest
+class GuardarMovimientoRequest extends FormRequest
 {
-    /**
-     * El acceso lo controla el middleware auth de la ruta.
-     */
     public function authorize(): bool
     {
         return true;
     }
 
-    /**
-     * @return array<string, array<int, mixed>>
-     */
     public function rules(): array
     {
+        $movimiento = $this->route('movimiento');
+        $tipo = $movimiento instanceof MovimientoFinanciero
+            ? $movimiento->categoria->tipo
+            : $this->input('tipo');
+        $reglasTipo = ['required', Rule::in(['ingreso', 'gasto'])];
+
+        if ($movimiento instanceof MovimientoFinanciero) {
+            $reglasTipo[] = Rule::in([$tipo]);
+        }
+
         return [
-            'categoria_id' => ['required', 'integer', Rule::exists('categorias', 'id')->where('user_id', $this->user()->id)],
+            'tipo' => $reglasTipo,
+            'movimiento_id' => ['nullable', 'integer'],
+            'categoria_id' => ['required', 'integer', Rule::exists('categorias', 'id')->where('tipo', $tipo)],
             'monto' => ['required', 'numeric', 'gt:0', 'decimal:0,2', 'max:999999999999.99'],
             'fecha' => ['required', 'date'],
             'concepto' => ['required', 'string', 'max:255'],
@@ -49,6 +52,7 @@ class RegistrarMovimientoRequest extends FormRequest
     public function attributes(): array
     {
         return [
+            'tipo' => 'tipo de movimiento',
             'categoria_id' => 'categoría',
             'monto' => 'monto',
             'fecha' => 'fecha',

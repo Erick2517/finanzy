@@ -11,8 +11,8 @@ class AppServiceProvider extends ServiceProvider
     /**
      * Register any application services.
      *
-     * Fuente de datos del panel y de los reportes: por defecto, los datos reales del
-     * usuario autenticado (MovimientosFinancierosEloquent). DatosFinancierosSimulados
+     * Fuente de datos del panel y de los reportes: por defecto, los datos compartidos
+     * de la empresa (MovimientosFinancierosEloquent). DatosFinancierosSimulados
      * se conserva para pruebas y demostraciones; para usarla, sustituir aquí la clase.
      */
     public function register(): void

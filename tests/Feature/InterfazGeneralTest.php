@@ -4,14 +4,11 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 class InterfazGeneralTest extends TestCase
 {
     use RefreshDatabase;
-
-    private const MODULOS_SIN_RUTA = ['/ingresos', '/gastos'];
 
     /**
      * Devuelve el href del enlace del logo (el <a> que contiene el icono de la billetera).
@@ -104,18 +101,16 @@ class InterfazGeneralTest extends TestCase
         $this->assertSame(route('login'), $this->hrefDelLogo($respuesta->getContent()));
     }
 
-    public function test_los_modulos_sin_ruta_se_muestran_como_proximamente_sin_enlace(): void
+    public function test_los_modulos_de_ingresos_y_gastos_aparecen_enlazados_en_el_menu(): void
     {
         $usuario = User::factory()->create();
 
         $respuesta = $this->actingAs($usuario)->get('/dashboard');
 
         $respuesta->assertOk()
-            ->assertSeeInOrder(['Ingresos', 'Próximamente', 'Gastos', 'Próximamente', 'Categorías']);
-
-        foreach (self::MODULOS_SIN_RUTA as $ruta) {
-            $respuesta->assertDontSee('href="'.url($ruta).'"', false);
-        }
+            ->assertSee('href="'.route('ingresos.index').'"', false)
+            ->assertSee('href="'.route('gastos.index').'"', false)
+            ->assertDontSee('Próximamente', false);
     }
 
     public function test_los_modulos_de_categorias_y_reportes_aparecen_enlazados_en_el_menu(): void
@@ -128,17 +123,15 @@ class InterfazGeneralTest extends TestCase
             ->assertSeeInOrder(['href="'.route('categorias.index').'"', 'Categorías', 'href="'.route('reportes.index').'"', 'Reportes'], false);
     }
 
-    public function test_un_modulo_se_enlaza_automaticamente_cuando_su_ruta_existe(): void
+    public function test_el_menu_enlaza_a_los_modulos_de_ingresos_y_gastos(): void
     {
-        Route::middleware('web')->get('/ingresos', fn () => 'ingresos')->name('ingresos.index');
-        Route::getRoutes()->refreshNameLookups();
         $usuario = User::factory()->create();
 
         $respuesta = $this->actingAs($usuario)->get('/dashboard');
 
         $respuesta->assertOk()
-            ->assertSee('href="'.url('/ingresos').'"', false)
-            ->assertDontSee('href="'.url('/gastos').'"', false);
+            ->assertSee('href="'.route('ingresos.index').'"', false)
+            ->assertSee('href="'.route('gastos.index').'"', false);
     }
 
     public function test_el_menu_marca_como_actual_el_modulo_de_la_pagina(): void

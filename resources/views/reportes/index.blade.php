@@ -11,7 +11,7 @@
 
 <x-layout.app title="Reportes financieros" activeRoute="reportes">
     <x-layout.page-header title="Reportes financieros" subtitle="Consulta ingresos, gastos y resultados por día, mes o año, y exporta el reporte.">
-        <a href="{{ route('movimientos.create') }}" class="btn btn-primary">
+        <a href="{{ route('ingresos.index') }}" class="btn btn-primary">
             <i class="bi bi-plus-circle" aria-hidden="true"></i> Registrar movimiento
         </a>
         <a href="{{ route('reportes.pdf', $filtros->parametros()) }}" class="btn btn-outline-primary" data-loading-text="Generando PDF…">

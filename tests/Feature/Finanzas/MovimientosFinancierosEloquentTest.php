@@ -65,6 +65,18 @@ class MovimientosFinancierosEloquentTest extends TestCase
         $this->assertSame(['Alquiler' => 1500.25], $fuente->gastosPorCategoria($this->noviembre()));
     }
 
+    public function test_los_movimientos_inactivos_no_se_incluyen_en_totales_ni_listados(): void
+    {
+        $usuario = User::factory()->create();
+        $movimiento = $this->movimiento($this->categoria($usuario, 'Ventas', 'ingreso'), '2026-11-02', 500);
+        $movimiento->update(['activo' => false]);
+
+        $fuente = $this->fuenteDe(User::factory()->create());
+
+        $this->assertSame(0.0, $fuente->totalIngresos($this->noviembre()));
+        $this->assertSame([], $fuente->movimientos($this->noviembre()));
+    }
+
     public function test_incluye_el_primer_y_el_ultimo_dia_del_periodo_y_excluye_los_demas(): void
     {
         $usuario = User::factory()->create();
@@ -77,17 +89,20 @@ class MovimientosFinancierosEloquentTest extends TestCase
         $this->assertSame(110.0, $this->fuenteDe($usuario)->totalGastos($this->noviembre()));
     }
 
-    public function test_solo_devuelve_los_datos_del_usuario_autenticado(): void
+    public function test_todos_los_usuarios_autenticados_consultan_los_mismos_movimientos(): void
     {
-        $propietario = User::factory()->create();
-        $otro = User::factory()->create();
-        $this->movimiento($this->categoria($propietario, 'Salario', 'ingreso'), '2026-11-02', 5000, 'Nómina privada');
+        $cajero = User::factory()->create();
+        $gerente = User::factory()->create();
+        $this->movimiento($this->categoria($cajero, 'Salario', 'ingreso'), '2026-11-02', 5000, 'Nómina de empresa');
 
-        $fuente = $this->fuenteDe($otro);
+        $fuente = $this->fuenteDe($gerente);
 
-        $this->assertSame(0.0, $fuente->totalIngresos($this->noviembre()));
-        $this->assertSame([], $fuente->movimientos($this->noviembre()));
-        $this->assertSame([], $fuente->categorias());
+        $this->assertSame(5000.0, $fuente->totalIngresos($this->noviembre()));
+        $this->assertSame(['Nómina de empresa'], array_map(
+            fn ($movimiento) => $movimiento->descripcion,
+            $fuente->movimientos($this->noviembre()),
+        ));
+        $this->assertSame(['Salario'], array_values($fuente->categorias()));
     }
 
     public function test_sin_sesion_no_devuelve_datos(): void
